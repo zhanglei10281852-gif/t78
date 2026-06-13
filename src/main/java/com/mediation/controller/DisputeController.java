@@ -1,5 +1,6 @@
 package com.mediation.controller;
 
+import com.mediation.common.ApiResponse;
 import com.mediation.dto.DisputeDTO;
 import com.mediation.entity.Dispute;
 import com.mediation.entity.Dispute.DisputeStatus;
@@ -8,6 +9,7 @@ import com.mediation.entity.Mediator;
 import com.mediation.entity.Mediator.MediatorStatus;
 import com.mediation.repository.DisputeRepository;
 import com.mediation.repository.MediatorRepository;
+import com.mediation.service.SubsidyCalculationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,6 +31,7 @@ public class DisputeController {
 
     private final DisputeRepository disputeRepository;
     private final MediatorRepository mediatorRepository;
+    private final SubsidyCalculationService subsidyCalculationService;
 
     @PostMapping
     public ResponseEntity<?> create(@Valid @RequestBody DisputeDTO dto) {
@@ -51,6 +54,7 @@ public class DisputeController {
                 .respondentPhone(dto.getRespondentPhone())
                 .description(dto.getDescription())
                 .amount(dto.getAmount())
+                .involvedPeopleCount(dto.getInvolvedPeopleCount())
                 .build();
 
         Dispute saved = disputeRepository.save(dispute);
@@ -103,6 +107,7 @@ public class DisputeController {
         response.put("respondentPhone", dispute.getRespondentPhone());
         response.put("description", dispute.getDescription());
         response.put("amount", dispute.getAmount());
+        response.put("involvedPeopleCount", dispute.getInvolvedPeopleCount());
         response.put("mediatorId", dispute.getMediatorId());
         response.put("status", dispute.getStatus());
         response.put("result", dispute.getResult());
@@ -200,7 +205,18 @@ public class DisputeController {
         dispute.setStatus(success ? DisputeStatus.调解成功 : DisputeStatus.调解失败);
         disputeRepository.save(dispute);
 
-        return ResponseEntity.ok(dispute);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("dispute", dispute);
+
+        if (dispute.getMediatorId() != null) {
+            try {
+                var calc = subsidyCalculationService.calculate(dispute.getId());
+                response.put("subsidyCalculation", calc);
+            } catch (Exception ignored) {
+            }
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PutMapping("/{id}/withdraw")

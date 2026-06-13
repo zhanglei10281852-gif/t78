@@ -29,4 +29,6 @@ public class DisputeDTO {
     private String description;
 
     private BigDecimal amount;
+
+    private Integer involvedPeopleCount;
 }

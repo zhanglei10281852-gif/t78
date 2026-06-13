@@ -46,6 +46,9 @@ public class Dispute {
     @Column(precision = 12, scale = 2)
     private BigDecimal amount;
 
+    @Column(name = "involved_people_count")
+    private Integer involvedPeopleCount;
+
     @Column(name = "mediator_id")
     private Long mediatorId;
 
