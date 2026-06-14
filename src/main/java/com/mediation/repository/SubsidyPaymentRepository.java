@@ -36,6 +36,11 @@ public interface SubsidyPaymentRepository extends JpaRepository<SubsidyPayment, 
     @Query("SELECT COALESCE(SUM(sp.amount), 0) FROM SubsidyPayment sp WHERE sp.mediatorId = :mediatorId")
     BigDecimal sumAmountByMediatorId(@Param("mediatorId") Long mediatorId);
 
+    @Query("SELECT COALESCE(SUM(sp.amount), 0) FROM SubsidyPayment sp " +
+            "WHERE sp.mediatorId = :mediatorId AND FUNCTION('YEAR', sp.paymentDate) = :year")
+    BigDecimal sumAmountByMediatorIdAndYear(@Param("mediatorId") Long mediatorId,
+                                            @Param("year") Integer year);
+
     @Query("SELECT sp.mediatorId, COALESCE(SUM(sp.amount), 0) FROM SubsidyPayment sp " +
             "WHERE FUNCTION('YEAR', sp.paymentDate) = :year GROUP BY sp.mediatorId ORDER BY SUM(sp.amount) DESC")
     List<Object[]> sumAmountByMediatorAndYear(@Param("year") Integer year);

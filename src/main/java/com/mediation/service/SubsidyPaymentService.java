@@ -91,7 +91,7 @@ public class SubsidyPaymentService {
         result.put("totalIncome", totalIncome);
 
         int currentYear = LocalDate.now().getYear();
-        BigDecimal yearIncome = subsidyPaymentRepository.sumAmountByYear(currentYear);
+        BigDecimal yearIncome = subsidyPaymentRepository.sumAmountByMediatorIdAndYear(mediatorId, currentYear);
         result.put("yearIncome", yearIncome != null ? yearIncome : BigDecimal.ZERO);
 
         List<SubsidyPayment> paymentList = subsidyPaymentRepository.findByMediatorId(mediatorId);

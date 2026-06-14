@@ -58,9 +58,17 @@ public class AuditStatsService {
         Map<String, Object> result = new LinkedHashMap<>();
 
         Map<String, Object> byOrganization = new LinkedHashMap<>();
-        List<Mediator> mediators = mediatorRepository.findAll();
         Map<String, BigDecimal> orgSubsidyMap = new LinkedHashMap<>();
         Map<String, Integer> orgCaseCountMap = new LinkedHashMap<>();
+
+        Map<Long, Integer> mediatorCaseCountMap = new LinkedHashMap<>();
+        List<Object[]> caseCountData = subsidyCalculationRepository
+                .monthlyCaseCountByMediator(AuditStatus.审核通过, year);
+        for (Object[] row : caseCountData) {
+            Long mediatorId = (Long) row[0];
+            long count = (Long) row[2];
+            mediatorCaseCountMap.merge(mediatorId, (int) count, Integer::sum);
+        }
 
         List<Object[]> mediatorYearStats = subsidyCalculationRepository
                 .sumAmountByMediatorAndYear(AuditStatus.审核通过, year);
@@ -68,10 +76,11 @@ public class AuditStatsService {
         for (Object[] row : mediatorYearStats) {
             Long mediatorId = (Long) row[0];
             BigDecimal amount = (BigDecimal) row[1];
+            int caseCount = mediatorCaseCountMap.getOrDefault(mediatorId, 0);
             mediatorRepository.findById(mediatorId).ifPresent(m -> {
                 String org = m.getOrganization();
                 orgSubsidyMap.merge(org, amount, BigDecimal::add);
-                orgCaseCountMap.merge(org, 1, Integer::sum);
+                orgCaseCountMap.merge(org, caseCount, Integer::sum);
             });
         }
 
@@ -121,6 +130,13 @@ public class AuditStatsService {
             Long mediatorId = entry.getKey();
             List<Integer> counts = entry.getValue();
 
+            int totalCases = counts.stream().mapToInt(Integer::intValue).sum();
+            long nonZeroMonths = counts.stream().filter(c -> c > 0).count();
+
+            if (totalCases < 3 || nonZeroMonths < 3) {
+                continue;
+            }
+
             double mean = counts.stream().mapToInt(Integer::intValue).average().orElse(0);
             double variance = counts.stream()
                     .mapToDouble(c -> Math.pow(c - mean, 2))
@@ -129,7 +145,7 @@ public class AuditStatsService {
             double threshold = mean + 3 * stdDev;
 
             for (int i = 0; i < counts.size(); i++) {
-                if (stdDev > 0 && counts.get(i) > threshold) {
+                if (stdDev > 0 && counts.get(i) > threshold && counts.get(i) >= 2) {
                     Map<String, Object> ab = new LinkedHashMap<>();
                     ab.put("mediatorId", mediatorId);
                     mediatorRepository.findById(mediatorId).ifPresent(m -> {
@@ -141,6 +157,8 @@ public class AuditStatsService {
                     ab.put("mean", round(mean, 2));
                     ab.put("stdDev", round(stdDev, 2));
                     ab.put("threshold", round(threshold, 2));
+                    ab.put("totalCases", totalCases);
+                    ab.put("nonZeroMonths", nonZeroMonths);
                     abnormal.add(ab);
                 }
             }

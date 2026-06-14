@@ -25,13 +25,13 @@ public interface ExpenseReimbursementRepository extends JpaRepository<ExpenseRei
     Page<ExpenseReimbursement> findByMediatorIdAndStatus(Long mediatorId, ReimbursementStatus status, Pageable pageable);
 
     @Query("SELECT COALESCE(SUM(er.totalAmount), 0) FROM ExpenseReimbursement er " +
-            "WHERE er.status = :status AND er.submittedAt BETWEEN :startDate AND :endDate")
+            "WHERE er.status = :status AND FUNCTION('DATE', er.submittedAt) BETWEEN :startDate AND :endDate")
     BigDecimal sumAmountByStatusAndDateBetween(@Param("status") ReimbursementStatus status,
                                                @Param("startDate") LocalDate startDate,
                                                @Param("endDate") LocalDate endDate);
 
     @Query("SELECT COALESCE(SUM(er.totalAmount), 0) FROM ExpenseReimbursement er " +
-            "WHERE er.status = :status AND FUNCTION('YEAR', er.submittedAt) = :year")
+            "WHERE er.status = :status AND FUNCTION('YEAR', FUNCTION('DATE', er.submittedAt)) = :year")
     BigDecimal sumAmountByStatusAndYear(@Param("status") ReimbursementStatus status,
                                         @Param("year") Integer year);
 }
